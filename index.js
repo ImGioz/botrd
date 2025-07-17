@@ -34,35 +34,36 @@ bot.onText(/\/start/, (msg) => {
 });
 
 // Проверка Telegram initData
+const { createHash, createHmac } = require('crypto');
+
 function checkTelegramInitData(initData) {
-  const params = new URLSearchParams(initData);
-  const hash = params.get('hash');
-  params.delete('hash');
-  params.delete('signature'); // ⬅️ Убираем лишнее, Telegram использует только hash
+  const params = Object.fromEntries(new URLSearchParams(initData));
+  // params — объект с ключами из initData
+  // Вытаскиваем hash отдельно
+  const { hash, ...data } = params;
 
-  const dataCheckArray = [];
-
-  for (const [key, rawValue] of params) {
-    let decoded = decodeURIComponent(rawValue);
-    if (key === 'user') {
-      decoded = decoded.replace(/\\\//g, '/'); // удаляем лишние экранирования
-    }
-    dataCheckArray.push(`${key}=${decoded}`);
+  // Раскодируем значения, если нужно, например user
+  if (data.user) {
+    data.user = decodeURIComponent(data.user).replace(/\\\//g, '/');
   }
 
-  dataCheckArray.sort();
-  const dataCheckString = dataCheckArray.join('\n');
+  return checkSignature(BOT_TOKEN, { hash, ...data });
+}
 
-  console.log('🔍 dataCheckString:\n', dataCheckString);
-
-  const secretKey = crypto.createHash('sha256').update(BOT_TOKEN).digest();
-  const hmac = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
-
-  console.log('🔍 expected hash:', hash);
-  console.log('🔍 computed hmac:', hmac);
-
+function checkSignature(token, { hash, ...data }) {
+  const secret = createHash('sha256')
+    .update(token)
+    .digest();
+  const checkString = Object.keys(data)
+    .sort()
+    .map(k => `${k}=${data[k]}`)
+    .join('\n');
+  const hmac = createHmac('sha256', secret)
+    .update(checkString)
+    .digest('hex');
   return hmac === hash;
 }
+
 
 app.post('/webapp_init', (req, res) => {
   const { initData } = req.body;
