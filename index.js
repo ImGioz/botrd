@@ -64,7 +64,6 @@ function checkTelegramInitData(initData) {
   return hmac === hash;
 }
 
-// Роут для приема initData
 app.post('/webapp_init', (req, res) => {
   const { initData } = req.body;
   console.log('Received initData:', initData);
@@ -73,24 +72,29 @@ app.post('/webapp_init', (req, res) => {
 
   if (!valid) {
     return res.status(403).json({ ok: false, error: 'Invalid initData' });
-}
-
-
+  }
 
   const params = new URLSearchParams(initData);
-  const userId = params.get('user[id]');
-  const firstName = params.get('user[first_name]');
+  const userStr = params.get('user');
+  let user = null;
+  try {
+    user = JSON.parse(userStr);
+  } catch (e) {
+    console.error('Failed to parse user JSON:', e);
+    return res.status(400).json({ ok: false, error: 'Invalid user data' });
+  }
 
   // Устанавливаем безопасный cookie
-  res.cookie('tg_user', userId, {
+  res.cookie('tg_user', user.id, {
     httpOnly: true,
-    secure: true,           // true — потому что HTTPS
+    secure: true,
     maxAge: 24 * 3600 * 1000,
     sameSite: 'none'
   });
 
-  return res.json({ ok: true, userId, firstName });
+  return res.json({ ok: true, userId: user.id, firstName: user.first_name });
 });
+
 
 // Пример защищенного роута
 app.get('/me', (req, res) => {
