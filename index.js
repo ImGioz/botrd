@@ -34,12 +34,19 @@ bot.onText(/\/start/, (msg) => {
 });
 
 // Проверка Telegram initData
+// Проверка Telegram initData
 function checkTelegramInitData(initData) {
   const params = new URLSearchParams(initData);
   const hash = params.get('hash');
   params.delete('hash');
 
-  const dataCheckArray = [...params].sort().map(([k, v]) => `${k}=${v}`);
+  // Сортируем параметры
+  const dataCheckArray = [];
+  for (const [key, value] of params) {
+    dataCheckArray.push(`${key}=${value}`);
+  }
+  dataCheckArray.sort();
+
   const dataCheckString = dataCheckArray.join('\n');
 
   const secretKey = crypto.createHash('sha256').update(BOT_TOKEN).digest();
@@ -47,6 +54,7 @@ function checkTelegramInitData(initData) {
 
   return hmac === hash;
 }
+
 
 // Роут для приема initData
 app.post('/webapp_init', (req, res) => {
