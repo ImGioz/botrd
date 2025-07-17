@@ -1,17 +1,25 @@
-// npm install express node-telegram-bot-api cookie-parser
+// npm install express node-telegram-bot-api cookie-parser cors
 const express = require('express');
 const TelegramBot = require('node-telegram-bot-api');
 const crypto = require('crypto');
 const cookieParser = require('cookie-parser');
+const cors = require('cors'); // <-- добавляем CORS
 
 const BOT_TOKEN = '7953079067:AAEAZcTsHYYYWQP6aB4HWWPQNrfYoP-nEts';
 const WEBAPP_URL = 'https://casemirror.cv/';
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: true });
 const app = express();
+
+// ✅ Настройка CORS ДО всех middleware
+app.use(cors({
+  origin: 'https://casemirror.cv',  // Разрешаем только твой фронтенд
+  credentials: true                 // Разрешаем куки
+}));
+
 app.use(express.json());
 app.use(cookieParser());
-app.use(express.static('public')); //опционально
+app.use(express.static('public')); // если нужно отдавать статические файлы
 
 // Создаем кнопку Web App
 bot.onText(/\/start/, (msg) => {
@@ -31,7 +39,7 @@ function checkTelegramInitData(initData) {
   const hash = params.get('hash');
   params.delete('hash');
 
-  const dataCheckArray = [...params].sort().map(([k,v]) => `${k}=${v}`);
+  const dataCheckArray = [...params].sort().map(([k, v]) => `${k}=${v}`);
   const dataCheckString = dataCheckArray.join('\n');
 
   const secretKey = crypto.createHash('sha256').update(BOT_TOKEN).digest();
@@ -54,7 +62,7 @@ app.post('/webapp_init', (req, res) => {
   // Устанавливаем безопасный cookie
   res.cookie('tg_user', userId, {
     httpOnly: true,
-    secure: true, // ⚠️ ставь true на HTTPS в продакшене
+    secure: true,           // true — потому что HTTPS
     maxAge: 24 * 3600 * 1000,
     sameSite: 'lax'
   });
@@ -69,4 +77,5 @@ app.get('/me', (req, res) => {
   res.json({ ok: true, userId });
 });
 
-app.listen(3001, () => console.log('Server listening on http://localhost:3001'));
+// Запуск сервера
+app.listen(3001, () => console.log('Server listening on good'));
