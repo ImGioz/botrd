@@ -64,7 +64,7 @@ app.post('/webapp_init', (req, res) => {
     httpOnly: true,
     secure: true,           // true — потому что HTTPS
     maxAge: 24 * 3600 * 1000,
-    sameSite: 'lax'
+    sameSite: 'none'
   });
 
   return res.json({ ok: true, userId, firstName });
