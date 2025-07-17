@@ -34,8 +34,6 @@ bot.onText(/\/start/, (msg) => {
 });
 
 // Проверка Telegram initData
-const crypto = require('crypto');
-
 function checkTelegramInitData(initData) {
   const params = new URLSearchParams(initData);
   const hash = params.get('hash');
