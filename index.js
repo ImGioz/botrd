@@ -35,28 +35,37 @@ bot.onText(/\/start/, (msg) => {
 
 // Проверка Telegram initData
 function checkTelegramInitData(initData) {
-  const hashRegex = /[?&]hash=([^&]+)/;
-  const match = initData.match(hashRegex);
-  if (!match) return false;
-  const hash = decodeURIComponent(match[1]);
-
-  // Убираем hash из строки
-  const dataStr = initData.replace(/([?&])hash=[^&]+(&?)/, (m,p1,p2) => p1 === '?' ? '?' : '') 
-                           .replace(/&$/, '');
-
-  // Разбиваем на пары key=value
-  const params = dataStr.split('&').map(pair => pair.split('='));
-  const sorted = params
-    .filter(([k]) => k !== 'hash')
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([k, v]) => `${k}=${v}`)
-    .join('\n');
+  const hashMatch = initData.match(/[?&]hash=([^&]+)/);
+  if (!hashMatch) {
+    console.log('❌ No hash param found');
+    return false;
+  }
+  const hash = hashMatch[1];
+  
+  // Удаляем параметр hash из строки, сохраняя формат
+  const dataStr = initData.replace(/([?&])hash=[^&]+(&?)/, (m,p1,p2) => p2 ? p1 : '');
+  
+  const parts = dataStr.split('&');
+  const filtered = parts.filter(p => !p.startsWith('hash='));
+  
+  // Сортируем параметры по ключу
+  const sortedParts = filtered.sort((a,b) => a.split('=')[0].localeCompare(b.split('=')[0]));
+  
+  const dataCheckString = sortedParts.join('\n');
+  
+  console.log('🔍 dataCheckString:\n', dataCheckString);
+  console.log('🔍 expected hash:', hash);
 
   const secretKey = crypto.createHash('sha256').update(BOT_TOKEN).digest();
-  const hmac = crypto.createHmac('sha256', secretKey).update(sorted).digest('hex');
+  const hmac = crypto.createHmac('sha256', secretKey)
+                     .update(dataCheckString)
+                     .digest('hex');
 
+  console.log('🔍 computed hmac:', hmac);
+  
   return hmac === hash;
 }
+
 
 
 
