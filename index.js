@@ -57,7 +57,7 @@ function checkTelegramInitData(initData) {
 
   console.log('🔍 dataCheckString:\n', dataCheckString);
 
-  const secretKey = crypto.createHash('sha256').update(process.env.BOT_TOKEN).digest(); // 🔐
+  const secretKey = crypto.createHash('sha256').update(BOT_TOKEN).digest();
   const hmac = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
 
   console.log('🔍 expected hash:', hash);
