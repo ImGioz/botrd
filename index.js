@@ -38,14 +38,21 @@ function checkTelegramInitData(initData) {
   const params = new URLSearchParams(initData);
   const hash = params.get('hash');
   params.delete('hash');
-  params.delete('signature'); // ⬅️ Удаляем и это!
+  params.delete('signature'); // на всякий случай
 
   const dataCheckArray = [];
-  for (const [key, value] of params) {
-    dataCheckArray.push(`${key}=${value}`);
-  }
-  dataCheckArray.sort();
 
+  for (const [key, value] of params) {
+    // Для поля user декодируем и убираем обратные слэши
+    if (key === 'user') {
+      const fixedUserValue = decodeURIComponent(value).replace(/\\\//g, '/');
+      dataCheckArray.push(`${key}=${fixedUserValue}`);
+    } else {
+      dataCheckArray.push(`${key}=${value}`);
+    }
+  }
+
+  dataCheckArray.sort();
   const dataCheckString = dataCheckArray.join('\n');
 
   console.log('🔍 dataCheckString:\n', dataCheckString);
@@ -58,6 +65,7 @@ function checkTelegramInitData(initData) {
 
   return hmac === hash;
 }
+
 
 
 
