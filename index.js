@@ -38,29 +38,27 @@ function checkTelegramInitData(initData) {
   const params = new URLSearchParams(initData);
   const hash = params.get('hash');
   params.delete('hash');
-  params.delete('signature'); // на всякий случай
+  params.delete('signature'); // если есть
 
-  const dataCheckArray = [];
+  const arr = [];
 
-  for (const [key, value] of params) {
-    // Для поля user декодируем и убираем обратные слэши
+  for (const [key, rawValue] of params) {
+    let decoded = decodeURIComponent(rawValue);
     if (key === 'user') {
-      const fixedUserValue = decodeURIComponent(value).replace(/\\\//g, '/');
-      dataCheckArray.push(`${key}=${fixedUserValue}`);
-    } else {
-      dataCheckArray.push(`${key}=${value}`);
+      decoded = decoded.replace(/\\\//g, '/');
     }
+    console.log(`🔹 ${key} = ${decoded}`);
+    arr.push(`${key}=${decoded}`);
   }
 
-  dataCheckArray.sort();
-  const dataCheckString = dataCheckArray.join('\n');
-
+  arr.sort();
+  const dataCheckString = arr.join('\n');
   console.log('🔍 dataCheckString:\n', dataCheckString);
-  console.log('🔍 expected hash:', hash);
 
   const secretKey = crypto.createHash('sha256').update(BOT_TOKEN).digest();
   const hmac = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
 
+  console.log('🔍 expected hash:', hash);
   console.log('🔍 computed hmac:', hmac);
 
   return hmac === hash;
