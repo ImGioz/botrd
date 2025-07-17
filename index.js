@@ -35,36 +35,30 @@ bot.onText(/\/start/, (msg) => {
 
 // Проверка Telegram initData
 function checkTelegramInitData(initData) {
-  const hashMatch = initData.match(/[?&]hash=([^&]+)/);
-  if (!hashMatch) {
-    console.log('❌ No hash param found');
-    return false;
+  const params = new URLSearchParams(initData);
+  const hash = params.get('hash');
+  params.delete('hash');
+  params.delete('signature'); // ⬅️ Удаляем и это!
+
+  const dataCheckArray = [];
+  for (const [key, value] of params) {
+    dataCheckArray.push(`${key}=${value}`);
   }
-  const hash = hashMatch[1];
-  
-  // Удаляем параметр hash из строки, сохраняя формат
-  const dataStr = initData.replace(/([?&])hash=[^&]+(&?)/, (m,p1,p2) => p2 ? p1 : '');
-  
-  const parts = dataStr.split('&');
-  const filtered = parts.filter(p => !p.startsWith('hash='));
-  
-  // Сортируем параметры по ключу
-  const sortedParts = filtered.sort((a,b) => a.split('=')[0].localeCompare(b.split('=')[0]));
-  
-  const dataCheckString = sortedParts.join('\n');
-  
+  dataCheckArray.sort();
+
+  const dataCheckString = dataCheckArray.join('\n');
+
   console.log('🔍 dataCheckString:\n', dataCheckString);
   console.log('🔍 expected hash:', hash);
 
   const secretKey = crypto.createHash('sha256').update(BOT_TOKEN).digest();
-  const hmac = crypto.createHmac('sha256', secretKey)
-                     .update(dataCheckString)
-                     .digest('hex');
+  const hmac = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
 
   console.log('🔍 computed hmac:', hmac);
-  
+
   return hmac === hash;
 }
+
 
 
 
