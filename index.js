@@ -51,13 +51,14 @@ function checkTelegramInitData(initData) {
 // Роут для приема initData
 app.post('/webapp_init', (req, res) => {
   const { initData } = req.body;
-  const valid = checkTelegramInitData(req.body.initData);
+  console.log('Received initData:', initData);
   const valid = initData && checkTelegramInitData(initData);
   console.log('checkTelegramInitData returns:', valid);
 
   if (!valid) {
     return res.status(403).json({ ok: false, error: 'Invalid initData' });
 }
+
 
 
   const params = new URLSearchParams(initData);
