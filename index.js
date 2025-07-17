@@ -34,28 +34,30 @@ bot.onText(/\/start/, (msg) => {
 });
 
 // Проверка Telegram initData
+const crypto = require('crypto');
+
 function checkTelegramInitData(initData) {
   const params = new URLSearchParams(initData);
   const hash = params.get('hash');
   params.delete('hash');
-  params.delete('signature'); // если есть
+  params.delete('signature'); // ⬅️ Убираем лишнее, Telegram использует только hash
 
-  const arr = [];
+  const dataCheckArray = [];
 
   for (const [key, rawValue] of params) {
     let decoded = decodeURIComponent(rawValue);
     if (key === 'user') {
-      decoded = decoded.replace(/\\\//g, '/');
+      decoded = decoded.replace(/\\\//g, '/'); // удаляем лишние экранирования
     }
-    console.log(`🔹 ${key} = ${decoded}`);
-    arr.push(`${key}=${decoded}`);
+    dataCheckArray.push(`${key}=${decoded}`);
   }
 
-  arr.sort();
-  const dataCheckString = arr.join('\n');
+  dataCheckArray.sort();
+  const dataCheckString = dataCheckArray.join('\n');
+
   console.log('🔍 dataCheckString:\n', dataCheckString);
 
-  const secretKey = crypto.createHash('sha256').update(BOT_TOKEN).digest();
+  const secretKey = crypto.createHash('sha256').update(process.env.BOT_TOKEN).digest(); // 🔐
   const hmac = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
 
   console.log('🔍 expected hash:', hash);
@@ -63,11 +65,6 @@ function checkTelegramInitData(initData) {
 
   return hmac === hash;
 }
-
-
-
-
-
 
 // Роут для приема initData
 app.post('/webapp_init', (req, res) => {
