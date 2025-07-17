@@ -1,108 +1,76 @@
-// npm install express node-telegram-bot-api cookie-parser cors
 const express = require('express');
-const TelegramBot = require('node-telegram-bot-api');
-const crypto = require('crypto');
+const cors = require('cors');
 const cookieParser = require('cookie-parser');
-const cors = require('cors'); // <-- добавляем CORS
+const { createHmac, createHash } = require('crypto');
 
-const BOT_TOKEN = '7953079067:AAEAZcTsHYYYWQP6aB4HWWPQNrfYoP-nEts';
-const WEBAPP_URL = 'https://casemirror.cv/';
-
-const bot = new TelegramBot(BOT_TOKEN, { polling: true });
 const app = express();
 
-// ✅ Настройка CORS ДО всех middleware
+const BOT_TOKEN = 'YOUR_BOT_TOKEN_HERE'; // 🔐 Заменить на настоящий токен!
+
 app.use(cors({
-  origin: true,  // Разрешаем только твой фронтенд
-  credentials: true                 // Разрешаем куки
+  origin: 'https://casemirror.cv', // 🔁 фронтент домен
+  credentials: true,
 }));
 
 app.use(express.json());
 app.use(cookieParser());
-app.use(express.static('public')); // если нужно отдавать статические файлы
 
-// Создаем кнопку Web App
-bot.onText(/\/start/, (msg) => {
-  const chatId = msg.chat.id;
-  bot.sendMessage(chatId, 'Открыть WebApp', {
-    reply_markup: {
-      inline_keyboard: [
-        [{ text: 'Перейти', web_app: { url: WEBAPP_URL } }]
-      ]
-    }
-  });
-});
+function isValidTelegramInitData(data) {
+  if (!data || !data.hash) return false;
 
-// Проверка Telegram initData
-const { createHash, createHmac } = require('crypto');
+  const { hash, ...rest } = data;
 
-function checkTelegramInitData(initData) {
-  const params = Object.fromEntries(new URLSearchParams(initData));
-  // params — объект с ключами из initData
-  // Вытаскиваем hash отдельно
-  const { hash, ...data } = params;
-
-  // Раскодируем значения, если нужно, например user
-  if (data.user) {
-    data.user = decodeURIComponent(data.user).replace(/\\\//g, '/');
-  }
-
-  return checkSignature(BOT_TOKEN, { hash, ...data });
-}
-
-function checkSignature(token, { hash, ...data }) {
-  const secret = createHash('sha256')
-    .update(token)
-    .digest();
-  const checkString = Object.keys(data)
+  // Строим data_check_string
+  const dataCheckArr = Object.keys(rest)
     .sort()
-    .map(k => `${k}=${data[k]}`)
-    .join('\n');
-  const hmac = createHmac('sha256', secret)
-    .update(checkString)
-    .digest('hex');
-  return hmac === hash;
-}
+    .map(key => `${key}=${typeof rest[key] === 'object' ? JSON.stringify(rest[key]) : rest[key]}`);
 
+  const dataCheckString = dataCheckArr.join('\n');
+
+  // Ключ: HMAC-SHA-256 от bot_token с ключом 'WebAppData'
+  const secret = createHmac('sha256', 'WebAppData')
+    .update(BOT_TOKEN)
+    .digest();
+
+  const calculatedHash = createHmac('sha256', secret)
+    .update(dataCheckString)
+    .digest('hex');
+
+  return calculatedHash === hash;
+}
 
 app.post('/webapp_init', (req, res) => {
-  const { initData } = req.body;
-  console.log('Received initData:', initData);
-  const valid = initData && checkTelegramInitData(initData);
-  console.log('checkTelegramInitData returns:', valid);
-
-  if (!valid) {
-    return res.status(403).json({ ok: false, error: 'Invalid initData' });
-  }
-
-  const params = new URLSearchParams(initData);
-  const userStr = params.get('user');
-  let user = null;
   try {
-    user = JSON.parse(userStr);
-  } catch (e) {
-    console.error('Failed to parse user JSON:', e);
-    return res.status(400).json({ ok: false, error: 'Invalid user data' });
+    const initData = req.body;
+    console.log('🔹 Received initDataUnsafe:', initData);
+
+    const isValid = isValidTelegramInitData(initData);
+
+    if (!isValid) {
+      console.warn('❌ Invalid initData');
+      return res.status(403).json({ ok: false, error: 'Invalid initData' });
+    }
+
+    const user = initData.user;
+    if (!user || !user.id) {
+      return res.status(400).json({ ok: false, error: 'No user data' });
+    }
+
+    res.cookie('tg_user', user.id, {
+      httpOnly: true,
+      secure: true,
+      maxAge: 24 * 3600 * 1000,
+      sameSite: 'none',
+    });
+
+    return res.json({ ok: true, userId: user.id, firstName: user.first_name });
+  } catch (err) {
+    console.error('🔥 Error:', err);
+    res.status(500).json({ ok: false, error: 'Internal server error' });
   }
-
-  // Устанавливаем безопасный cookie
-  res.cookie('tg_user', user.id, {
-    httpOnly: true,
-    secure: true,
-    maxAge: 24 * 3600 * 1000,
-    sameSite: 'none'
-  });
-
-  return res.json({ ok: true, userId: user.id, firstName: user.first_name });
 });
 
-
-// Пример защищенного роута
-app.get('/me', (req, res) => {
-  const userId = req.cookies.tg_user;
-  if (!userId) return res.status(401).json({ ok: false });
-  res.json({ ok: true, userId });
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => {
+  console.log(`✅ Server listening on port ${PORT}`);
 });
-
-// Запуск сервера
-app.listen(3001, () => console.log('Server listening on good'));
