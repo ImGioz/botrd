@@ -5,7 +5,7 @@ const { createHmac, createHash } = require('crypto');
 
 const app = express();
 
-const BOT_TOKEN = 'YOUR_BOT_TOKEN_HERE'; // 🔐 Заменить на настоящий токен!
+const BOT_TOKEN = '7953079067:AAGAkWW2amf18i-B5sM63BWSJ65Cxugvhx0'; // 🔐 Заменить на настоящий токен!
 
 app.use(cors({
   origin: 'https://casemirror.cv', // 🔁 фронтент домен
