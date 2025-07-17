@@ -13,7 +13,7 @@ const app = express();
 
 // ✅ Настройка CORS ДО всех middleware
 app.use(cors({
-  origin: 'https://casemirror.cv',  // Разрешаем только твой фронтенд
+  origin: true,  // Разрешаем только твой фронтенд
   credentials: true                 // Разрешаем куки
 }));
 
